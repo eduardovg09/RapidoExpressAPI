@@ -1,0 +1,6 @@
+@RapidoExpressAPI_HostAddress = http://localhost:5176
+
+GET {{RapidoExpressAPI_HostAddress}}/api/estados/
+Accept: application/json
+
+###
