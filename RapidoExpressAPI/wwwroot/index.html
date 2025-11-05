@@ -1,110 +1,198 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rápido Express - Gestión de Envíos</title>
-    <link rel="stylesheet" href="style.css?v=1">
+    <title>Rápido Express - Administración</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .vista {
+            display: none;
+        }
+        /* Oculta todas las vistas por defecto */
+        .vista-activa {
+            display: block !important;
+        }
+        /* Muestra solo la activa */
+        .cursor-pointer {
+            cursor: pointer;
+        }
+    </style>
 </head>
-
 <body class="bg-light">
 
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-7">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="#" id="nav-home">🚚 Rápido Express</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="#" id="nav-admin-envios">Admin. Envíos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" id="nav-admin-clientes">Admin. Clientes</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" id="nav-registrar-envio">Nuevo Envío</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
 
-                <div class="card shadow-sm">
-                    <div class="card-header bg-primary text-white">
-                        <h3 class="mb-0">Registrar Nuevo Envío</h3>
+    <div class="container">
+        <div id="mensaje-global" class="alert d-none text-center fw-bold"></div>
+
+        <section id="vista-home" class="vista vista-activa text-center py-5">
+            <h1 class="display-4 fw-bold text-primary mb-4">Bienvenido a Rápido Express</h1>
+            <p class="lead text-muted mb-5">Seleccione una operación para comenzar</p>
+            <div class="row justify-content-center g-4">
+                <div class="col-md-4">
+                    <div class="card h-100 shadow-sm cursor-pointer hover-effect" onclick="document.getElementById('nav-admin-envios').click()">
+                        <div class="card-body py-5">
+                            <h3>📦</h3>
+                            <h5 class="card-title">Administrar Envíos</h5>
+                            <p class="card-text">Ver listado, cambiar estatus y detalles.</p>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <form id="form-envio">
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 shadow-sm cursor-pointer hover-effect" onclick="document.getElementById('nav-admin-clientes').click()">
+                        <div class="card-body py-5">
+                            <h3>👥</h3>
+                            <h5 class="card-title">Administrar Clientes</h5>
+                            <p class="card-text">Registrar nuevos clientes o eliminarlos.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 shadow-sm cursor-pointer hover-effect" onclick="document.getElementById('nav-registrar-envio').click()">
+                        <div class="card-body py-5">
+                            <h3>✨</h3>
+                            <h5 class="card-title">Registrar Nuevo Envío</h5>
+                            <p class="card-text">Crear una nueva orden de envío.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-                            <div id="mensaje-area" class="d-none"></div>
+        <section id="vista-admin-envios" class="vista">
+            <h2 class="mb-4">Administración de Envíos</h2>
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <label class="form-label">Filtrar por Cliente:</label>
+                    <select id="filtro-cliente-envios" class="form-select">
+                        <option value="">Seleccione un cliente para ver sus envíos...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-responsive card shadow-sm p-3 d-none" id="tabla-envios-container">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Descripción</th>
+                            <th>Destino</th>
+                            <th>Fecha</th>
+                            <th>Estatus</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-envios-body">
+                    </tbody>
+                </table>
+            </div>
+        </section>
 
-                            <div class="mb-3">
-                                <label for="cliente" class="form-label">Cliente</label>
-                                <select id="cliente" class="form-select" required>
-                                    <option value="">Seleccione un cliente...</option>
-                                </select>
-
-                                <div class="mt-2 d-flex gap-2">
-                                    <button class="btn btn-info btn-sm" type="button" id="btn-ver-envios">
-                                        Ver Envíos
-                                    </button>
-                                    <button class="btn btn-danger btn-sm" type="button" id="btn-eliminar-cliente">
-                                        Eliminar Cliente
-                                    </button>
+        <section id="vista-admin-clientes" class="vista">
+            <div class="row">
+                <div class="col-md-5">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">Registrar Nuevo Cliente</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="form-cliente">
+                                <div class="mb-3">
+                                    <label class="form-label">Nombre</label>
+                                    <input type="text" id="cliente-nombre" class="form-control" required>
                                 </div>
-                            </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Correo</label>
+                                    <input type="email" id="cliente-correo" class="form-control" required>
+                                </div>
+                                <button type="submit" class="btn btn-success w-100">Guardar Cliente</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-7">
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0">Listado de Clientes</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <ul class="list-group list-group-flush" id="lista-clientes-admin">
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="estado" class="form-label">Estado</label>
-                                    <select id="estado" class="form-select" required>
-                                        <option value="">Seleccione un estado...</option>
+        <section id="vista-registrar-envio" class="vista">
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-primary text-white">
+                            <h4 class="mb-0">Registrar Nuevo Envío</h4>
+                        </div>
+                        <div class="card-body">
+                            <form id="form-envio">
+                                <div class="mb-3">
+                                    <label for="cliente" class="form-label">Cliente</label>
+                                    <select id="cliente" class="form-select" required>
+                                        <option value="">Seleccione un cliente...</option>
                                     </select>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="ciudad" class="form-label">Ciudad</label>
-                                    <select id="ciudad" class="form-select" required disabled>
-                                        <option value="">Seleccione un estado primero...</option>
-                                    </select>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="estado" class="form-label">Estado Destino</label>
+                                        <select id="estado" class="form-select" required>
+                                            <option value="">Seleccione...</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="ciudad" class="form-label">Ciudad Destino</label>
+                                        <select id="ciudad" class="form-select" required disabled>
+                                            <option value="">Seleccione estado primero...</option>
+                                        </select>
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="descripcion" class="form-label">Descripción del Paquete</label>
-                                <textarea class="form-control" id="descripcion" rows="3" required></textarea>
-                            </div>
-
-                            <button type="submit" id="btn-registrar" class="btn btn-primary w-100">
-                                Registrar Envío
-                            </button>
-                        </form>
+                                <div class="mb-3">
+                                    <label for="descripcion" class="form-label">Descripción</label>
+                                    <textarea class="form-control" id="descripcion" rows="2" required></textarea>
+                                </div>
+                                <button type="submit" id="btn-registrar" class="btn btn-primary w-100 py-2">Registrar Envío</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
+            </div>
+        </section>
 
-                <div class="card shadow-sm mt-4">
-                    <div class="card-header bg-success text-white">
-                        <h3 class="mb-0">Registrar Nuevo Cliente</h3>
-                    </div>
-                    <div class="card-body">
-                        <form id="form-cliente">
-                            <div class="mb-3">
-                                <label for="cliente-nombre" class="form-label">Nombre</label>
-                                <input type="text" id="cliente-nombre" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="cliente-correo" class="form-label">Correo</label>
-                                <input type="email" id="cliente-correo" class="form-control" required>
-                            </div>
-                            <button type="submit" class="btn btn-success w-100">Registrar Cliente</button>
-                        </form>
-                    </div>
+    </div> <div class="modal fade" id="modalDetalle" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalle del Envío</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-
-                <div class="mt-5" id="envios-area">
+                <div class="modal-body" id="modal-contenido-cuerpo">
                 </div>
-
             </div>
         </div>
     </div>
 
-    <div id="modal-detalle" class="modal-overlay">
-        <div class="modal-contenido card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Detalle del Envío</h5>
-                <button id="modal-cerrar" type="button" class="btn-close"></button>
-            </div>
-            <div class="card-body" id="modal-contenido-cuerpo">
-            </div>
-        </div>
-    </div>
-
-    <script src="app.js?v=1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
 </body>
-
 </html>

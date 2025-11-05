@@ -1,267 +1,281 @@
-// public/app.js
-
-// Espera a que el DOM esté completamente cargado
 document.addEventListener('DOMContentLoaded', () => {
-
-    // --- 1. Referencias a elementos del DOM ---
-    const form = document.getElementById('form-envio');
-    const selectEstado = document.getElementById('estado');
-    const selectCiudad = document.getElementById('ciudad');
-    const selectCliente = document.getElementById('cliente');
-    const inputDescripcion = document.getElementById('descripcion');
-    const mensajeArea = document.getElementById('mensaje-area');
-    const btnRegistrar = document.getElementById('btn-registrar');
-
-    // Nuevas referencias
-    const formCliente = document.getElementById('form-cliente');
-    const inputClienteNombre = document.getElementById('cliente-nombre');
-    const inputClienteCorreo = document.getElementById('cliente-correo');
-    const btnVerEnvios = document.getElementById('btn-ver-envios');
-    const btnEliminarCliente = document.getElementById('btn-eliminar-cliente');
-    const enviosArea = document.getElementById('envios-area');
-
-    // Referencias del Modal
-    const modalDetalle = document.getElementById('modal-detalle');
-    const modalContenido = document.getElementById('modal-contenido-cuerpo');
-    const modalCerrar = document.getElementById('modal-cerrar');
-
-    // URL base de tu API
+    // =========================================
+    // 1. VARIABLES GLOBALES Y REFERENCIAS
+    // =========================================
     const API_URL = '/api';
+    let bootstrapModal; // Para manejar el modal con Bootstrap
 
-    // --- 2. Función para cargar Estados ---
-    async function cargarEstados() {
-        try {
-            const response = await fetch(`${API_URL}/estados`);
-            if (!response.ok) throw new Error('No se pudieron cargar los estados');
-            const estados = await response.json();
-            estados.forEach(estado => {
-                const option = document.createElement('option');
-                option.value = estado.id_estado;
-                option.textContent = estado.nombre_estado;
-                selectEstado.appendChild(option);
-            });
-        } catch (error) {
-            mostrarMensaje('Error al cargar estados: ' + error.message, 'danger');
+    // Referencias de navegación
+    const navLinks = {
+        'nav-home': 'vista-home',
+        'nav-admin-envios': 'vista-admin-envios',
+        'nav-admin-clientes': 'vista-admin-clientes',
+        'nav-registrar-envio': 'vista-registrar-envio'
+    };
+
+    // Referencias globales
+    const mensajeGlobal = document.getElementById('mensaje-global');
+
+    // =========================================
+    // 2. SISTEMA DE NAVEGACIÓN (ROUTING SIMPLE)
+    // =========================================
+    function mostrarVista(vistaId) {
+        // Ocultar todas las vistas
+        document.querySelectorAll('.vista').forEach(v => v.classList.remove('vista-activa'));
+        // Mostrar la deseada
+        document.getElementById(vistaId).classList.add('vista-activa');
+
+        // Acciones específicas al entrar a una vista
+        if (vistaId === 'vista-admin-clientes') cargarListaClientesAdmin();
+        if (vistaId === 'vista-admin-envios') cargarClientesFiltro();
+        if (vistaId === 'vista-registrar-envio') {
+            cargarClientesCombo();
+            cargarEstados();
         }
     }
 
-    // --- 3. Función para cargar Clientes ---
-    async function cargarClientes() {
-        selectCliente.innerHTML = '<option value="">Seleccione un cliente...</option>';
-        try {
-            const response = await fetch(`${API_URL}/clientes`);
-            if (!response.ok) throw new Error('No se pudieron cargar los clientes');
-            const clientes = await response.json();
-            clientes.forEach(cliente => {
-                const option = document.createElement('option');
-                option.value = cliente.id_cliente;
-                option.textContent = cliente.nombre;
-                selectCliente.appendChild(option);
-            });
-        } catch (error) {
-            mostrarMensaje('Error al cargar clientes: ' + error.message, 'danger');
-        }
+    // Asignar eventos click al menú
+    Object.keys(navLinks).forEach(navId => {
+        document.getElementById(navId).addEventListener('click', (e) => {
+            e.preventDefault();
+            mostrarVista(navLinks[navId]);
+        });
+    });
+
+    // =========================================
+    // 3. FUNCIONES COMPARTIDAS
+    // =========================================
+    function mostrarMensaje(msg, tipo = 'success') {
+        mensajeGlobal.className = `alert alert-${tipo} fixed-top container mt-3`;
+        mensajeGlobal.textContent = (tipo === 'success' ? '✅ ' : '❌ ') + msg;
+        mensajeGlobal.classList.remove('d-none');
+        setTimeout(() => mensajeGlobal.classList.add('d-none'), 4000);
     }
 
-    // --- 4. Función para cargar Ciudades ---
-    async function cargarCiudades(idEstado) {
-        selectCiudad.innerHTML = '<option value="">Cargando...</option>';
-        selectCiudad.disabled = true;
-        if (!idEstado) {
-            selectCiudad.innerHTML = '<option value="">Seleccione un estado primero...</option>';
-            return;
-        }
+    async function fetchAPI(endpoint, options = {}) {
         try {
-            const response = await fetch(`${API_URL}/ciudades/${idEstado}`);
-            if (!response.ok) throw new Error('No se pudieron cargar las ciudades');
-            const ciudades = await response.json();
-            selectCiudad.innerHTML = '<option value="">Seleccione una ciudad...</option>';
-            ciudades.forEach(ciudad => {
-                const option = document.createElement('option');
-                option.value = ciudad.id_ciudad;
-                option.textContent = ciudad.nombre_ciudad;
-                selectCiudad.appendChild(option);
-            });
-            selectCiudad.disabled = false;
-        } catch (error) {
-            mostrarMensaje('Error al cargar ciudades: ' + error.message, 'danger');
-        }
-    }
-
-    // --- 5. Función para mostrar mensajes ---
-    function mostrarMensaje(mensaje, tipo) {
-        mensajeArea.textContent = mensaje;
-        mensajeArea.className = `alert alert-${tipo}`;
-        if (tipo === 'success') mensajeArea.textContent = '✅ ' + mensaje;
-        else if (tipo === 'warning') mensajeArea.textContent = '⚠️ ' + mensaje;
-        else if (tipo === 'danger') mensajeArea.textContent = '❌ ' + mensaje;
-        mensajeArea.classList.remove('d-none');
-        setTimeout(() => {
-            mensajeArea.classList.add('d-none');
-            mensajeArea.className = '';
-        }, 5000);
-    }
-
-    // --- 6. Función para registrar Envío ---
-    async function registrarEnvio(e) {
-        e.preventDefault();
-        btnRegistrar.disabled = true;
-        btnRegistrar.textContent = 'Registrando...';
-        const datosEnvio = {
-            id_cliente: parseInt(selectCliente.value),
-            id_ciudad: parseInt(selectCiudad.value),
-            descripcion: inputDescripcion.value.trim()
-        };
-        try {
-            const response = await fetch(`${API_URL}/envios`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(datosEnvio)
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.mensaje || 'Error desconocido');
-            mostrarMensaje(data.mensaje, 'success');
-            form.reset();
-            selectCiudad.innerHTML = '<option value="">Seleccione un estado primero...</option>';
-            selectCiudad.disabled = true;
+            const response = await fetch(`${API_URL}${endpoint}`, options);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.mensaje || `Error ${response.status}`);
+            }
+            return await response.json();
         } catch (error) {
             mostrarMensaje(error.message, 'danger');
-        } finally {
-            btnRegistrar.disabled = false;
-            btnRegistrar.textContent = 'Registrar Envío';
+            throw error;
         }
     }
 
-    // --- 7. Función para registrar Cliente ---
+    // =========================================
+    // 4. LÓGICA: ADMIN CLIENTES
+    // =========================================
+    async function cargarListaClientesAdmin() {
+        const lista = document.getElementById('lista-clientes-admin');
+        lista.innerHTML = '<li class="list-group-item">Cargando...</li>';
+        try {
+            const clientes = await fetchAPI('/clientes');
+            lista.innerHTML = '';
+            clientes.forEach(c => {
+                lista.innerHTML += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div><strong>${c.nombre}</strong> <br><small class="text-muted">${c.correo}</small></div>
+                        <button class="btn btn-outline-danger btn-sm btn-eliminar-cliente" data-id="${c.id_cliente}">Eliminar</button>
+                    </li>`;
+            });
+            // Asignar eventos a los botones de eliminar recién creados
+            document.querySelectorAll('.btn-eliminar-cliente').forEach(btn => {
+                btn.addEventListener('click', () => eliminarCliente(btn.dataset.id));
+            });
+        } catch (e) { lista.innerHTML = '<li class="list-group-item text-danger">Error al cargar clientes</li>'; }
+    }
+
     async function registrarCliente(e) {
         e.preventDefault();
-        const nombre = inputClienteNombre.value.trim();
-        const correo = inputClienteCorreo.value.trim();
-        if (!nombre || !correo) {
-            mostrarMensaje('Nombre y correo son requeridos', 'danger');
-            return;
-        }
+        const nombre = document.getElementById('cliente-nombre').value.trim();
+        const correo = document.getElementById('cliente-correo').value.trim();
         try {
-            const response = await fetch(`${API_URL}/clientes`, {
+            const res = await fetchAPI('/clientes', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ nombre, correo })
             });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.mensaje);
-            mostrarMensaje(data.mensaje, 'success');
-            formCliente.reset();
-            cargarClientes();
-        } catch (error) {
-            mostrarMensaje(error.message, 'danger');
-        }
+            mostrarMensaje(res.mensaje);
+            document.getElementById('form-cliente').reset();
+            cargarListaClientesAdmin();
+        } catch (e) { /* Error ya manejado en fetchAPI */ }
     }
 
-    // --- 8. Función para eliminar Cliente ---
-    async function eliminarCliente() {
-        const idCliente = selectCliente.value;
-        if (!idCliente) {
-            mostrarMensaje('Seleccione un cliente para eliminar', 'warning');
-            return;
-        }
-        if (!confirm(`¿Está seguro de eliminar al cliente?`)) return;
+    async function eliminarCliente(id) {
+        if (!confirm('¿Seguro que desea eliminar este cliente?')) return;
         try {
-            const response = await fetch(`${API_URL}/clientes/${idCliente}`, { method: 'DELETE' });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.mensaje);
-            mostrarMensaje(data.mensaje, 'success');
-            cargarClientes();
-            enviosArea.innerHTML = '';
-        } catch (error) {
-            mostrarMensaje(error.message, 'danger');
-        }
+            const res = await fetchAPI(`/clientes/${id}`, { method: 'DELETE' });
+            mostrarMensaje(res.mensaje);
+            cargarListaClientesAdmin();
+        } catch (e) { /* Error ya manejado */ }
     }
 
-    // --- 9. Función para ver Envíos ---
-    async function verEnviosCliente() {
-        const idCliente = selectCliente.value;
+    // =========================================
+    // 5. LÓGICA: ADMIN ENVÍOS
+    // =========================================
+    async function cargarClientesFiltro() {
+        const select = document.getElementById('filtro-cliente-envios');
+        select.innerHTML = '<option value="">Cargando...</option>';
+        try {
+            const clientes = await fetchAPI('/clientes');
+            select.innerHTML = '<option value="">Seleccione un cliente...</option>';
+            clientes.forEach(c => select.innerHTML += `<option value="${c.id_cliente}">${c.nombre}</option>`);
+        } catch (e) { select.innerHTML = '<option>Error al cargar</option>'; }
+    }
+
+    async function cargarEnviosDeCliente(idCliente) {
+        const tbody = document.getElementById('tabla-envios-body');
+        const container = document.getElementById('tabla-envios-container');
+
         if (!idCliente) {
-            mostrarMensaje('Seleccione un cliente para ver sus envíos', 'warning');
+            container.classList.add('d-none');
             return;
         }
-        enviosArea.innerHTML = '<h4>Cargando envíos...</h4>';
+
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando...</td></tr>';
+        container.classList.remove('d-none');
+
         try {
-            const response = await fetch(`${API_URL}/clientes/${idCliente}/envios`);
-            if (!response.ok) throw new Error('Error al cargar envíos');
-            const envios = await response.json();
+            const envios = await fetchAPI(`/clientes/${idCliente}/envios`);
             if (envios.length === 0) {
-                enviosArea.innerHTML = '<h4>Este cliente no tiene envíos registrados.</h4>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Este cliente no tiene envíos</td></tr>';
                 return;
             }
-            let html = '<h4>Envíos del Cliente</h4><ul class="list-group">';
-            envios.forEach(envio => {
-                html += `
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>ID: ${envio.id_envio}</strong> - ${envio.descripcion}
-                            <small class="d-block">Destino: ${envio.ciudad_destino} | Estatus: ${envio.estatus}</small>
-                        </div>
-                        <button class="btn btn-sm btn-info btn-ver-detalle" data-id="${envio.id_envio}">Ver Detalle</button>
-                    </li>`;
+            tbody.innerHTML = '';
+            envios.forEach(e => {
+                // Creamos el select de estatus para cada fila
+                const estatusOptions = ['Registrado', 'En preparación', 'Enviado', 'Entregado']
+                    .map(est => `<option value="${est}" ${e.estatus === est ? 'selected' : ''}>${est}</option>`)
+                    .join('');
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>#${e.id_envio}</td>
+                        <td>${e.descripcion}</td>
+                        <td>${e.ciudad_destino}</td>
+                        <td>${new Date(e.fecha_envio).toLocaleDateString()}</td>
+                        <td>
+                            <select class="form-select form-select-sm select-estatus" data-id="${e.id_envio}" style="width:auto;">
+                                ${estatusOptions}
+                            </select>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-info text-white btn-ver-detalle" data-id="${e.id_envio}">Ver Detalle</button>
+                        </td>
+                    </tr>`;
             });
-            html += '</ul>';
-            enviosArea.innerHTML = html;
-        } catch (error) {
-            mostrarMensaje(error.message, 'danger');
-        }
+
+            // Eventos para cambio de estatus y ver detalle
+            document.querySelectorAll('.select-estatus').forEach(sel => {
+                sel.addEventListener('change', (e) => actualizarEstatus(e.target.dataset.id, e.target.value));
+            });
+            document.querySelectorAll('.btn-ver-detalle').forEach(btn => {
+                btn.addEventListener('click', () => verDetalleEnvio(btn.dataset.id));
+            });
+
+        } catch (e) { tbody.innerHTML = '<tr><td colspan="6" class="text-danger">Error al cargar datos</td></tr>'; }
     }
 
-    // --- 10. Función para ver Detalle (Modal) ---
-    async function verDetalleEnvio(idEnvio) {
-        modalContenido.innerHTML = 'Cargando detalle...';
-        modalDetalle.style.display = 'block';
+    async function actualizarEstatus(idEnvio, nuevoEstatus) {
         try {
-            const response = await fetch(`${API_URL}/envios/${idEnvio}`);
-            if (!response.ok) throw new Error('No se pudo cargar el detalle');
-            const detalle = await response.json();
-            const fecha = new Date(detalle.fecha_envio).toLocaleString('es-MX', { timeZone: 'UTC' });
-            modalContenido.innerHTML = `
-                <h5>Detalle del Envío #${detalle.id_envio}</h5>
-                <p><strong>Descripción:</strong> ${detalle.descripcion}</p>
-                <p><strong>Estatus:</strong> ${detalle.estatus}</p>
-                <p><strong>Fecha:</strong> ${fecha}</p>
-                <hr><h6>Cliente</h6>
-                <p><strong>Nombre:</strong> ${detalle.nombre_cliente}</p>
-                <p><strong>Correo:</strong> ${detalle.correo}</p>
-                <hr><h6>Destino</h6>
-                <p><strong>Ciudad:</strong> ${detalle.ciudad_destino}</p>
-                <p><strong>Estado:</strong> ${detalle.estado_destino}</p>`;
-        } catch (error) {
-            modalContenido.innerHTML = `<p class="text-danger">Error: ${error.message}</p>`;
-        }
+            const res = await fetchAPI(`/envios/${idEnvio}/estatus`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estatus: nuevoEstatus })
+            });
+            mostrarMensaje(`Envío #${idEnvio}: ${res.mensaje}`);
+        } catch (e) { /* Error ya manejado */ }
     }
 
     // =========================================
-    // --- 11. EVENT LISTENERS (¡ESTO FALTABA!) ---
+    // 6. LÓGICA: REGISTRAR ENVÍO (Existente)
     // =========================================
+    async function cargarClientesCombo() {
+        const select = document.getElementById('cliente');
+        try {
+            const clientes = await fetchAPI('/clientes');
+            select.innerHTML = '<option value="">Seleccione un cliente...</option>';
+            clientes.forEach(c => select.innerHTML += `<option value="${c.id_cliente}">${c.nombre}</option>`);
+        } catch (e) { }
+    }
+    async function cargarEstados() {
+        const select = document.getElementById('estado');
+        try {
+            const estados = await fetchAPI('/estados');
+            estados.forEach(e => select.innerHTML += `<option value="${e.id_estado}">${e.nombre_estado}</option>`);
+        } catch (e) { }
+    }
+    async function cargarCiudades(idEstado) {
+        const selectCiudad = document.getElementById('ciudad');
+        selectCiudad.innerHTML = '<option>Cargando...</option>'; selectCiudad.disabled = true;
+        try {
+            const ciudades = await fetchAPI(`/ciudades/${idEstado}`);
+            selectCiudad.innerHTML = '<option value="">Seleccione ciudad...</option>';
+            ciudades.forEach(c => selectCiudad.innerHTML += `<option value="${c.id_ciudad}">${c.nombre_ciudad}</option>`);
+            selectCiudad.disabled = false;
+        } catch (e) { selectCiudad.innerHTML = '<option>Error al cargar</option>'; }
+    }
+    async function registrarNuevoEnvio(e) {
+        e.preventDefault();
+        try {
+            const res = await fetchAPI('/envios', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id_cliente: document.getElementById('cliente').value,
+                    id_ciudad: document.getElementById('ciudad').value,
+                    descripcion: document.getElementById('descripcion').value
+                })
+            });
+            mostrarMensaje(res.mensaje);
+            e.target.reset();
+            document.getElementById('ciudad').innerHTML = '<option>Seleccione estado primero...</option>';
+            document.getElementById('ciudad').disabled = true;
+        } catch (e) { /* Error ya manejado */ }
+    }
 
-    selectEstado.addEventListener('change', () => cargarCiudades(selectEstado.value));
-    form.addEventListener('submit', registrarEnvio);
+    // =========================================
+    // 7. MODAL DETALLE
+    // =========================================
+    async function verDetalleEnvio(idEnvio) {
+        const modalBody = document.getElementById('modal-contenido-cuerpo');
+        modalBody.innerHTML = '<div class="text-center">Cargando datos...</div>';
+        bootstrapModal = new bootstrap.Modal(document.getElementById('modalDetalle'));
+        bootstrapModal.show();
 
-    if (formCliente) formCliente.addEventListener('submit', registrarCliente);
-    if (btnVerEnvios) btnVerEnvios.addEventListener('click', verEnviosCliente);
-    if (btnEliminarCliente) btnEliminarCliente.addEventListener('click', eliminarCliente);
+        try {
+            const d = await fetchAPI(`/envios/${idEnvio}`);
+            modalBody.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>📦 Información del Paquete</h6>
+                        <p><strong>ID:</strong> #${d.id_envio}<br>
+                        <strong>Descripción:</strong> ${d.descripcion}<br>
+                        <strong>Estatus:</strong> <span class="badge bg-primary">${d.estatus}</span><br>
+                        <strong>Fecha:</strong> ${new Date(d.fecha_envio).toLocaleString()}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>📍 Destino y Cliente</h6>
+                        <p><strong>Cliente:</strong> ${d.nombre_cliente} (${d.correo})<br>
+                        <strong>Ciudad:</strong> ${d.ciudad_destino}<br>
+                        <strong>Estado:</strong> ${d.estado_destino}</p>
+                    </div>
+                </div>`;
+        } catch (e) { modalBody.innerHTML = '<p class="text-danger">Error al cargar detalle</p>'; }
+    }
 
-    // Listener para botones dinámicos (Ver Detalle)
-    enviosArea.addEventListener('click', (e) => {
-        if (e.target.classList.contains('btn-ver-detalle')) {
-            verDetalleEnvio(e.target.dataset.id);
-        }
-    });
+    // =========================================
+    // 8. INICIALIZACIÓN DE EVENTOS
+    // =========================================
+    document.getElementById('filtro-cliente-envios').addEventListener('change', (e) => cargarEnviosDeCliente(e.target.value));
+    document.getElementById('form-cliente').addEventListener('submit', registrarCliente);
+    document.getElementById('estado').addEventListener('change', (e) => cargarCiudades(e.target.value));
+    document.getElementById('form-envio').addEventListener('submit', registrarNuevoEnvio);
 
-    // Listeners del Modal
-    if (modalCerrar) modalCerrar.addEventListener('click', () => modalDetalle.style.display = 'none');
-    if (modalDetalle) modalDetalle.addEventListener('click', (e) => {
-        if (e.target === modalDetalle) modalDetalle.style.display = 'none';
-    });
-
-    // --- 12. Carga inicial ---
-    cargarEstados();
-    cargarClientes();
-
+    // Iniciar en la portada
+    mostrarVista('vista-home');
 });
