@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================
     // 1. VARIABLES GLOBALES Y REFERENCIAS
     // =========================================
-    const API_URL = '/api';
+    const API_URL = 'https://proyecto2psafd-dkgghjccdsgjdrcu.mexicocentral-01.azurewebsites.net/api';
     let bootstrapModal; // Para manejar el modal con Bootstrap
 
     // Referencias de navegación
